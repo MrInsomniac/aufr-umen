@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kevin's Aufräum-Checkliste</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #121212;
+            color: #ffffff;
+        }
+        .category {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #333;
+            background-color: #1e1e1e;
+        }
+        .category h2 {
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+        .category.collapsed .tasks {
+            display: none;
+        }
+        .task {
+            margin: 10px 0;
+        }
+        .completed {
+            text-decoration: line-through;
+            color: gray;
+        }
+        .info {
+            color: #76c7c0;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        .info:hover {
+            text-decoration: underline;
+        }
+        .stats {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #333;
+            background-color: #1e1e1e;
+            display: none; /* Standardmäßig versteckt */
+        }
+        .stats ul {
+            list-style-type: none;
+            padding: 0;
+        }
+        .stats li {
+            margin: 5px 0;
+        }
+        .stats .task-details {
+            display: flex;
+            justify-content: space-between;
+            padding-left: 10px;
+        }
+        .progress-bar {
+            margin-top: 20px;
+            width: 100%;
+            background-color: #333;
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        .progress-bar-inner {
+            height: 20px;
+            background-color: #76c7c0;
+            width: 0;
+            transition: width 0.3s ease;
+        }
+        button {
+            background-color: #76c7c0;
+            border: none;
+            padding: 10px 20px;
+            color: #121212;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background-color: #5baaa3;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Kevin's Aufräum-Checkliste</h1>
+<button id="startButton">Start</button>
+<div id="checklist"></div>
+<button id="showStats">Statistik</button>
+<button id="exportPDF">Exportieren als PDF</button>
+<div id="stats" class="stats"></div>
+<div class="progress-bar">
+    <div class="progress-bar-inner" id="progressBar"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.4.0/jspdf.umd.min.js"></script>
+<script>
+    const tasks = {
+        Küche: [
+            { name: "Müll sammeln", details: "Sammle den Müll in einem Beutel und bring ihn in den Müllcontainer." },
+            { name: "Geschirr wegräumen", details: "Spüle das Geschirr ab und räume es in den Schrank." },
+            { name: "Arbeitsflächen reinigen", details: "Wische die Arbeitsflächen mit einem feuchten Tuch ab." },
+            { name: "Boden reinigen", details: "Feg oder wische den Küchenboden gründlich." }
+        ],
+        Wohnzimmer: [
+            { name: "Müll entfernen", details: "Sammle Müll und entsorge ihn in einem Müllbeutel." },
+            { name: "Couchtisch aufräumen", details: "Räume den Couchtisch ab und wische ihn sauber." },
+            { name: "Sofa ordnen", details: "Richte die Sofakissen und entferne Gegenstände vom Sofa." },
+            { name: "Staub wischen", details: "Wische Staub von Oberflächen wie Regalen und Tischen." },
+            { name: "Boden reinigen", details: "Feg oder sauge den Wohnzimmerboden." }
+        ],
+        Badezimmer: [
+            { name: "Müll entsorgen", details: "Entleere den Mülleimer und bring den Müll nach draußen." },
+            { name: "Waschbecken und Spiegel reinigen", details: "Reinige das Waschbecken und poliere den Spiegel." },
+            { name: "Dusche/Badewanne reinigen", details: "Reinige die Dusche oder Badewanne gründlich." },
+            { name: "Boden reinigen", details: "Wische oder fege den Badezimmerboden." }
+        ],
+        Schlafzimmer: [
+            { name: "Bett machen", details: "Ziehe das Bett frisch auf oder ordne die vorhandene Bettwäsche." },
+            { name: "Schmutzwäsche sammeln", details: "Sammle die Schmutzwäsche in einem Wäschekorb." },
+            { name: "Nachttisch aufräumen", details: "Räume den Nachttisch ab und reinige die Oberfläche." },
+            { name: "Boden reinigen", details: "Sauge oder wische den Schlafzimmerboden." }
+        ],
+        Büro: [
+            { name: "Müll sammeln", details: "Sammle Papier- und sonstigen Müll und entsorge ihn." },
+            { name: "Schreibtisch aufräumen", details: "Ordne Dokumente und reinige die Schreibtischfläche." },
+            { name: "Staub wischen", details: "Wische Staub von elektronischen Geräten und Möbeln." },
+            { name: "Boden reinigen", details: "Sauge oder wische den Bürobereich." }
+        ],
+        Flur: [
+            { name: "Schuhe sortieren", details: "Ordne die Schuhe und stelle sie ordentlich hin." },
+            { name: "Jacken aufhängen", details: "Hänge Jacken ordentlich an die Garderobe." },
+            { name: "Boden reinigen", details: "Sauge oder wische den Flurbereich." }
+        ],
+        Endrunde: [
+            { name: "Kontrollgang durch alle Räume", details: "Überprüfe, ob alle Aufgaben abgeschlossen sind." },
+            { name: "Fenster lüften", details: "Öffne die Fenster, um frische Luft hereinzulassen." },
+            { name: "Boden-Check final", details: "Überprüfe, ob alle Böden sauber sind." }
+        ]
+    };
+
+    const taskData = Object.entries(tasks).flatMap(([category, taskList]) =>
+        taskList.map(task => ({
+            category,
+            name: task.name,
+            details: task.details,
+            startTime: null,
+            endTime: null
+        }))
+    );
+
+    const checklist = document.getElementById("checklist");
+    const statsDiv = document.getElementById("stats");
+    const progressBar = document.getElementById("progressBar");
+
+    let checklistStarted = false;
+    let lastTaskEndTime = null;
+
+    function formatTime(date) {
+        return date ? date.toLocaleTimeString() : "N/A";
+    }
+
+    function calculateDuration(start, end) {
+        if (start && end) {
+            return Math.round((end - start) / 60000) + " min";
+        }
+        return "N/A";
+    }
+
+    function updateProgressBar() {
+        const completedTasks = taskData.filter(task => task.endTime !== null).length;
+        const totalTasks = taskData.length;
+        const progressPercentage = (completedTasks / totalTasks) * 100;
+        progressBar.style.width = `${progressPercentage}%`;
+    }
+
+    function renderChecklist() {
+        checklist.innerHTML = "";
+        Object.entries(tasks).forEach(([category, taskList]) => {
+            const categoryDiv = document.createElement("div");
+            categoryDiv.classList.add("category");
+
+            const categoryHeader = document.createElement("h2");
+            categoryHeader.textContent = category;
+            categoryHeader.addEventListener("click", () => toggleCategory(categoryDiv));
+            categoryDiv.appendChild(categoryHeader);
+
+            const tasksContainer = document.createElement("div");
+            tasksContainer.classList.add("tasks");
+
+            taskList.forEach(task => {
+                const taskDataEntry = taskData.find(t => t.name === task.name);
+
+                const taskDiv = document.createElement("div");
+                taskDiv.classList.add("task");
+
+                const checkbox = document.createElement("input");
+                checkbox.type = "checkbox";
+                checkbox.id = `task-${task.name}`;
+                checkbox.addEventListener("change", () => handleCheckboxChange(taskDataEntry, categoryDiv));
+
+                const label = document.createElement("label");
+                label.htmlFor = `task-${task.name}`;
+                label.textContent = task.name;
+
+                const info = document.createElement("span");
+                info.classList.add("info");
+                info.textContent = "?";
+                info.title = task.details;
+
+                if (taskDataEntry.endTime) {
+                    label.classList.add("completed");
+                }
+
+                taskDiv.appendChild(checkbox);
+                taskDiv.appendChild(label);
+                taskDiv.appendChild(info);
+                tasksContainer.appendChild(taskDiv);
+            });
+
+            categoryDiv.appendChild(tasksContainer);
+            checklist.appendChild(categoryDiv);
+        });
+    }
+
+    function handleCheckboxChange(task, categoryDiv) {
+        const now = new Date();
+
+        if (!checklistStarted) {
+            alert("Bitte starte die Checkliste zuerst!");
+            return;
+        }
+
+        if (!task.startTime && !lastTaskEndTime) {
+            alert("Die Startzeit wurde für die erste Aufgabe gesetzt.");
+            task.startTime = now;
+            lastTaskEndTime = now;
+        } else if (!task.endTime) {
+            task.startTime = lastTaskEndTime;
+            task.endTime = now;
+            lastTaskEndTime = now;
+            alert(`Endzeit für '${task.name}' erfasst: ${formatTime(now)}`);
+            updateProgressBar();
+
+            const allComplete = Array.from(categoryDiv.querySelectorAll("input[type='checkbox']"))
+                .every(checkbox => checkbox.checked);
+
+            if (allComplete) {
+                categoryDiv.classList.add("collapsed");
+                const nextCategory = categoryDiv.nextElementSibling;
+                if (nextCategory && nextCategory.classList.contains("category")) {
+                    nextCategory.classList.remove("collapsed");
+                }
+            }
+
+            renderChecklist();
+        }
+    }
+
+    function toggleCategory(categoryDiv) {
+        categoryDiv.classList.toggle("collapsed");
+    }
+
+    function exportPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+
+        let yPosition = 10;
+        doc.setFontSize(18);
+        doc.text("Aufräum Statistik", 105, yPosition, { align: "center" });
+        yPosition += 10;
+
+        doc.setFontSize(12);
+        doc.text(`Start: ${formatTime(taskData[0]?.startTime) || "N/A"} `, 10, yPosition);
+        doc.text(`Ende: ${formatTime(lastTaskEndTime) || "N/A"} `, 70, yPosition);
+        doc.text(`Dauer: ${calculateDuration(taskData[0]?.startTime, lastTaskEndTime)}`, 140, yPosition);
+        yPosition += 10;
+
+        let totalDuration = 0;
+
+        Object.entries(tasks).forEach(([category, taskList]) => {
+            let categoryDuration = 0;
+
+            doc.setFillColor(220, 220, 220);
+            doc.rect(10, yPosition, 190, 10, "F");
+            doc.setFontSize(14);
+            doc.text(category, 15, yPosition + 7);
+            yPosition += 15;
+
+            taskList.forEach(task => {
+                const taskDataEntry = taskData.find(t => t.name === task.name);
+                const duration = taskDataEntry.startTime && taskDataEntry.endTime ? (taskDataEntry.endTime - taskDataEntry.startTime) / 60000 : 0;
+                categoryDuration += duration;
+
+                doc.setFontSize(12);
+                doc.text(
+                    `${task.name} - Start: ${formatTime(taskDataEntry.startTime)} End: ${formatTime(taskDataEntry.endTime)} Dauer: ${calculateDuration(taskDataEntry.startTime, taskDataEntry.endTime)}`,
+                    15,
+                    yPosition
+                );
+                yPosition += 10;
+
+                if (yPosition > 280) {
+                    doc.addPage();
+                    yPosition = 10;
+                }
+            });
+
+            totalDuration += categoryDuration;
+            doc.setFontSize(12);
+            doc.text(`Kategorie-Dauer: ${Math.round(categoryDuration)} min`, 15, yPosition);
+            yPosition += 10;
+        });
+
+        doc.setFontSize(14);
+        doc.text(`Gesamtdauer: ${Math.round(totalDuration)} min`, 15, yPosition);
+
+        doc.save("Aufraeum_Statistik.pdf");
+    }
+
+    function startChecklist() {
+        checklistStarted = true;
+        lastTaskEndTime = new Date();
+        alert("Die Checkliste wurde gestartet!");
+    }
+
+    function toggleStats() {
+    if (statsDiv.style.display === "none") {
+        statsDiv.style.display = "block";
+
+        // Statistiken generieren und anzeigen
+        let statsHTML = `<h3>Statistik</h3>`;
+        statsHTML += `<p>Start: ${formatTime(taskData[0]?.startTime)}</p>`;
+        statsHTML += `<p>Ende: ${formatTime(lastTaskEndTime)}</p>`;
+        statsHTML += `<p>Gesamtdauer: ${calculateDuration(taskData[0]?.startTime, lastTaskEndTime)}</p>`;
+
+        statsHTML += "<ul>";
+        Object.entries(tasks).forEach(([category, taskList]) => {
+            statsHTML += `<li><br><strong>${category}</strong>:`;
+
+            statsHTML += "<ul>";
+            taskList.forEach(task => {
+                const taskDataEntry = taskData.find(t => t.name === task.name);
+                statsHTML += `<li>${task.name}
+                    <div class='task-details'>
+                        <span>Start: ${formatTime(taskDataEntry?.startTime)}</span>
+                        <span>Ende: ${formatTime(taskDataEntry?.endTime)}</span>
+                        <span>Dauer: ${calculateDuration(taskDataEntry?.startTime, taskDataEntry?.endTime)}</span>
+                    </div>
+                </li>`;
+            });
+            statsHTML += "</ul></li>";
+        });
+        statsHTML += "</ul>";
+
+        statsDiv.innerHTML = statsHTML;
+    } else {
+        statsDiv.style.display = "none";
+    }
+}
+
+    document.getElementById("startButton").addEventListener("click", startChecklist);
+    document.getElementById("exportPDF").addEventListener("click", exportPDF);
+    document.getElementById("showStats").addEventListener("click", toggleStats);
+    renderChecklist();
+</script>
+
+</body>
+</html>
